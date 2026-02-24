@@ -1,16 +1,23 @@
-import asyncio
+import os
+from openai import AsyncOpenAI
+
+client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 async def analyze_content(description: str, image_url: str) -> bool:
     """
-    Pass the description and image to your AI model here.
-    Returns True if flagged, False if clean.
+    Sends description text and image URL to OpenAI's omni-moderation-latest model.
+    Returns True if any content is flagged, False if clean.
     """
-    # TODO: Insert your actual AI provider SDK code here (OpenAI, Gemini, etc.)
-    # Example mock delay to simulate AI processing:
-    await asyncio.sleep(2) 
-    
-    # Mock logic: flag if the word "bad" is in the description
-    if "bad" in description.lower():
-        return True
-    
-    return False
+    response = await client.moderations.create(
+        model="omni-moderation-latest",
+        input=[
+            {"type": "text", "text": description},
+            {
+                "type": "image_url",
+                "image_url": {"url": image_url},
+            },
+        ],
+    )
+
+    result = response.results[0]
+    return result.flagged
