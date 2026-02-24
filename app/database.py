@@ -7,13 +7,22 @@ client = AsyncIOMotorClient(DATABASE_URL)
 db = client["jurnee-app"]
 collection = db["posts"]
 
-async def block_content_in_db(document_id: ObjectId):
-    """Updates the document status to BLOCKED."""
+async def update_content_status(document_id: str, status: str):
+    """
+    Updates a document's status field.
+    status must be one of: 'BLOCKED', 'PENDING', 'PUBLISHED'.
+    """
     try:
-        await collection.update_one(
-            {"_id": document_id},
-            {"$set": {"status": "BLOCKED"}}
+        result = await collection.update_one(
+            {"_id": ObjectId(document_id)},
+            {"$set": {"status": status}}
         )
-        print(f"Document {document_id} blocked successfully.")
+        if result.modified_count:
+            print(f"Document {document_id} status set to {status}.")
+        else:
+            print(f"Document {document_id} not found or already at status {status}.")
     except Exception as e:
         print(f"Database error for {document_id}: {e}")
+
+async def block_content_in_db(document_id: str):
+    await update_content_status(document_id, "BLOCKED")
