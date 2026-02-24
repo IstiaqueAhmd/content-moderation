@@ -3,3 +3,4 @@ uvicorn[standard]
 motor
 openai
 python-dotenv
+gunicorn
