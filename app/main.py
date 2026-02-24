@@ -7,7 +7,7 @@ app = FastAPI(title="AI Moderation Microservice")
 
 async def moderation_workflow(data: ModerationRequest):
     """Background job: calls OpenAI moderation and updates the DB status."""
-    is_flagged = await analyze_content(data.description, data.image)
+    is_flagged = await analyze_content(data.description, data.image, data.media)
 
     if is_flagged:
         await block_content_in_db(data.id)
