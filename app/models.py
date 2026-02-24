@@ -1,3 +1,6 @@
 from pydantic import BaseModel
-from typing import Dict, Any, Optional, List
-from datetime import datetime
+
+class ModerationRequest(BaseModel):
+    description: str
+    image: str
+    id: str 
