@@ -4,8 +4,8 @@ from bson import ObjectId
 
 DATABASE_URL = os.getenv("DATABASE_URL")
 client = AsyncIOMotorClient(DATABASE_URL)
-db = client["jurnee-app"]
-collection = db["posts"]
+db = client[os.getenv("DATABASE_NAME")]
+collection = db[os.getenv("COLLECTION_NAME")]
 
 async def update_content_status(document_id: str, status: str):
     """
@@ -24,5 +24,9 @@ async def update_content_status(document_id: str, status: str):
     except Exception as e:
         print(f"Database error for {document_id}: {e}")
 
+# Convenience helpers kept for backward compatibility
 async def block_content_in_db(document_id: str):
     await update_content_status(document_id, "BLOCKED")
+
+async def publish_content_in_db(document_id: str):
+    await update_content_status(document_id, "PUBLISHED")
