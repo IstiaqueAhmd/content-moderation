@@ -13,7 +13,7 @@ collection = db[os.getenv("COLLECTION_NAME")]
 async def update_content_status(document_id: str, status: str):
     """
     Updates a document's status field.
-    status must be one of: 'BLOCKED', 'PENDING', 'PUBLISHED'.
+    status must be one of: 'BLOCKED', 'SUSPICIOUS', 'PUBLISHED'.
     """
     try:
         result = await collection.update_one(
