@@ -1,9 +1,8 @@
-import logging
 import os
+import asyncio
 from typing import Optional, List
 from openai import AsyncOpenAI
 
-logger = logging.getLogger(__name__)
 client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 # Extensions considered images (videos and other files are skipped)
@@ -14,38 +13,44 @@ def _is_image_url(url: str) -> bool:
     path = url.split("?")[0].lower()  # strip query params before checking ext
     return any(path.endswith(ext) for ext in IMAGE_EXTENSIONS)
 
+async def _moderate(inputs: list) -> bool:
+    """Run a single moderation request and return whether it was flagged."""
+    response = await client.moderations.create(
+        model="omni-moderation-latest",
+        input=inputs,
+    )
+    return response.results[0].flagged
+
 async def analyze_content(
     description: str,
     image: Optional[str],
     media: Optional[List[str]],
 ) -> bool:
     """
-    Sends description text and all image URLs to OpenAI's omni-moderation-latest.
-    - `image`  : single optional cover image URL
-    - `media`  : optional list of mixed media URLs (videos are silently skipped)
-    Returns True if any content is flagged, False if clean.
+    Sends description text and image URLs to OpenAI's omni-moderation-latest.
+    The API allows at most 1 image per request, so each image is checked in a
+    separate call (paired with the description text).  A text-only call is
+    always made as well.  Returns True if *any* call is flagged, False if clean.
     """
-    inputs = [{"type": "text", "text": description}]
-
-    # Add the single cover image if provided
+    # Collect all image URLs to check
+    image_urls: List[str] = []
     if image:
-        inputs.append({"type": "image_url", "image_url": {"url": image}})
-
-    # Add only image URLs from the media list (skip videos and other types)
+        image_urls.append(image)
     if media:
-        for url in media:
-            if _is_image_url(url):
-                inputs.append({"type": "image_url", "image_url": {"url": url}})
-            else:
-                logger.debug("Skipping non-image media URL: %s", url)
+        image_urls.extend(url for url in media if _is_image_url(url))
 
-    logger.debug("Sending %d input(s) to OpenAI moderation API.", len(inputs))
+    # Build one task per image (each paired with the text) + a text-only task
+    tasks: List[asyncio.Task] = []
 
-    response = await client.moderations.create(
-        model="omni-moderation-latest",
-        input=inputs,
-    )
+    # Text-only moderation
+    tasks.append(_moderate([{"type": "text", "text": description}]))
 
-    flagged = response.results[0].flagged
-    logger.debug("OpenAI moderation result: flagged=%s", flagged)
-    return flagged
+    # One call per image (API limit: 1 image per request)
+    for url in image_urls:
+        tasks.append(_moderate([
+            {"type": "text", "text": description},
+            {"type": "image_url", "image_url": {"url": url}},
+        ]))
+
+    results = await asyncio.gather(*tasks)
+    return any(results)
