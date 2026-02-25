@@ -1,7 +1,10 @@
+import logging
 import os
 from motor.motor_asyncio import AsyncIOMotorClient
 from bson import ObjectId
 from dotenv import load_dotenv
+
+logger = logging.getLogger(__name__)
 
 load_dotenv()
 
@@ -21,11 +24,11 @@ async def update_content_status(document_id: str, status: str):
             {"$set": {"status": status}}
         )
         if result.modified_count:
-            print(f"Document {document_id} status set to {status}.")
+            logger.info("Document %s status set to %s.", document_id, status)
         else:
-            print(f"Document {document_id} not found or already at status {status}.")
+            logger.warning("Document %s not found or already at status %s.", document_id, status)
     except Exception as e:
-        print(f"Database error for {document_id}: {e}")
+        logger.error("Database error for document %s: %s", document_id, e, exc_info=True)
 
 # Convenience helpers kept for backward compatibility
 async def block_content_in_db(document_id: str):

@@ -1,7 +1,9 @@
+import logging
 import os
 from typing import Optional, List
 from openai import AsyncOpenAI
 
+logger = logging.getLogger(__name__)
 client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 # Extensions considered images (videos and other files are skipped)
@@ -34,10 +36,16 @@ async def analyze_content(
         for url in media:
             if _is_image_url(url):
                 inputs.append({"type": "image_url", "image_url": {"url": url}})
+            else:
+                logger.debug("Skipping non-image media URL: %s", url)
+
+    logger.debug("Sending %d input(s) to OpenAI moderation API.", len(inputs))
 
     response = await client.moderations.create(
         model="omni-moderation-latest",
         input=inputs,
     )
 
-    return response.results[0].flagged
+    flagged = response.results[0].flagged
+    logger.debug("OpenAI moderation result: flagged=%s", flagged)
+    return flagged
